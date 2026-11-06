@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>DatingApp</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💘</text></svg>">
+    <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+
+<!-- ============ Auth (login / register) ============ -->
+<main id="auth-view" class="auth" hidden>
+    <div class="auth-card">
+        <h1 class="logo">💘 DatingApp</h1>
+
+        <div class="segmented" role="tablist" aria-label="Sign in or create an account">
+            <button type="button" role="tab" id="tab-login" aria-selected="true" aria-controls="login-form">Log in</button>
+            <button type="button" role="tab" id="tab-register" aria-selected="false" aria-controls="register-form">Create account</button>
+        </div>
+
+        <form id="login-form" class="form" novalidate>
+            <label>Email <input name="email" type="email" autocomplete="username" required></label>
+            <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
+            <button type="submit" class="btn primary">Log in</button>
+            <p class="hint">Tip: each browser tab keeps its own login, so open two tabs to chat between two users.</p>
+        </form>
+
+        <form id="register-form" class="form" novalidate hidden>
+            <div class="grid-2">
+                <label>Name <input name="name" required maxlength="100"></label>
+                <label>Date of birth <input name="dateOfBirth" type="date" required></label>
+            </div>
+            <label>Email <input name="email" type="email" autocomplete="username" required maxlength="254"></label>
+            <label>Password <span class="muted">(8–72 characters)</span>
+                <input name="password" type="password" autocomplete="new-password" required minlength="8" maxlength="72">
+            </label>
+            <div class="grid-2">
+                <label>I am
+                    <select name="gender" required>
+                        <option value="FEMALE">Female</option>
+                        <option value="MALE">Male</option>
+                        <option value="NON_BINARY">Non-binary</option>
+                    </select>
+                </label>
+                <label>Interested in
+                    <select name="preferredGender">
+                        <option value="">Anyone</option>
+                        <option value="FEMALE">Women</option>
+                        <option value="MALE">Men</option>
+                        <option value="NON_BINARY">Non-binary people</option>
+                    </select>
+                </label>
+            </div>
+            <fieldset class="location">
+                <legend>Location</legend>
+                <div class="grid-2">
+                    <label>Latitude <input name="latitude" type="number" step="any" min="-90" max="90" value="40.7128" required></label>
+                    <label>Longitude <input name="longitude" type="number" step="any" min="-180" max="180" value="-74.0060" required></label>
+                </div>
+                <button type="button" class="btn small ghost" data-geolocate>📍 Use my location</button>
+            </fieldset>
+            <label>Interests <span class="muted">(comma-separated)</span> <input name="interests" placeholder="hiking, coffee, jazz"></label>
+            <label>Bio <textarea name="bio" rows="2" maxlength="1000"></textarea></label>
+            <details>
+                <summary>Discovery preferences</summary>
+                <div class="grid-3">
+                    <label>Max distance (km) <input name="maxDistanceKm" type="number" min="1" max="500" value="50"></label>
+                    <label>Min age <input name="minAge" type="number" min="18" max="100" value="18"></label>
+                    <label>Max age <input name="maxAge" type="number" min="18" max="100" value="60"></label>
+                </div>
+            </details>
+            <button type="submit" class="btn primary">Create account</button>
+        </form>
+    </div>
+</main>
+
+<!-- ============ Main app ============ -->
+<div id="app-view" hidden>
+    <header class="topbar">
+        <span class="logo">💘 DatingApp</span>
+        <nav class="tabs" role="tablist" aria-label="Sections">
+            <button type="button" role="tab" data-tab="discover" aria-selected="true">Discover</button>
+            <button type="button" role="tab" data-tab="matches" aria-selected="false">Matches <span id="unread-total" class="badge" hidden></span></button>
+            <button type="button" role="tab" data-tab="profile" aria-selected="false">Profile</button>
+        </nav>
+        <div class="whoami">
+            <span id="ws-status" class="dot" title="Real-time: disconnected" aria-label="Real-time: disconnected"></span>
+            <span id="me-name"></span>
+            <button type="button" id="logout" class="btn small ghost">Log out</button>
+        </div>
+    </header>
+
+    <!-- Discover -->
+    <main id="panel-discover" class="panel" role="tabpanel">
+        <div id="candidate-area" class="discover"></div>
+    </main>
+
+    <!-- Matches + chat -->
+    <main id="panel-matches" class="panel" role="tabpanel" hidden>
+        <div class="matches-layout">
+            <aside class="match-list">
+                <h2>Your matches</h2>
+                <ul id="match-list"></ul>
+            </aside>
+            <section class="chat" id="chat" aria-label="Chat">
+                <div class="chat-empty" id="chat-empty">Select a match to start chatting.</div>
+                <div class="chat-inner" id="chat-inner" hidden>
+                    <header class="chat-header">
+                        <div id="chat-title"></div>
+                        <button type="button" id="unmatch" class="btn small danger">Unmatch</button>
+                    </header>
+                    <div class="messages" id="messages" aria-live="polite">
+                        <button type="button" id="load-older" class="btn small ghost load-older" hidden>Load older messages</button>
+                        <ol id="message-list"></ol>
+                    </div>
+                    <form id="message-form" class="composer">
+                        <label class="sr-only" for="message-input">Message</label>
+                        <input id="message-input" autocomplete="off" maxlength="2000" placeholder="Type a message…">
+                        <button type="submit" class="btn primary">Send</button>
+                    </form>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Profile -->
+    <main id="panel-profile" class="panel" role="tabpanel" hidden>
+        <div class="profile-card">
+            <h2>Your profile</h2>
+            <p class="muted" id="profile-meta"></p>
+            <form id="profile-form" class="form" novalidate>
+                <label>Name <input name="name" maxlength="100"></label>
+                <label>Bio <textarea name="bio" rows="3" maxlength="1000"></textarea></label>
+                <label>Profile picture URL <span class="muted">(https only)</span> <input name="profilePictureUrl" type="url" placeholder="https://…"></label>
+                <label>Interests <span class="muted">(comma-separated)</span> <input name="interests"></label>
+                <fieldset class="location">
+                    <legend>Location</legend>
+                    <div class="grid-2">
+                        <label>Latitude <input name="latitude" type="number" step="any" min="-90" max="90"></label>
+                        <label>Longitude <input name="longitude" type="number" step="any" min="-180" max="180"></label>
+                    </div>
+                    <button type="button" class="btn small ghost" data-geolocate>📍 Use my location</button>
+                </fieldset>
+                <div class="grid-2">
+                    <label>Interested in
+                        <select name="preferredGender">
+                            <option value="">(unchanged)</option>
+                            <option value="FEMALE">Women</option>
+                            <option value="MALE">Men</option>
+                            <option value="NON_BINARY">Non-binary people</option>
+                        </select>
+                    </label>
+                    <label>Max distance (km) <input name="maxDistanceKm" type="number" min="1" max="500"></label>
+                </div>
+                <div class="grid-2">
+                    <label>Min age <input name="minAge" type="number" min="18" max="100"></label>
+                    <label>Max age <input name="maxAge" type="number" min="18" max="100"></label>
+                </div>
+                <button type="submit" class="btn primary">Save changes</button>
+            </form>
+            <hr>
+            <button type="button" id="delete-account" class="btn danger">Delete my account</button>
+        </div>
+    </main>
+</div>
+
+<div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+
+<script src="/app.js"></script>
+</body>
+</html>

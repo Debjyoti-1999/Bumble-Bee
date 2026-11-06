@@ -2,26 +2,29 @@
 
 A near real-time dating backend built with Spring Boot 4. Users register, browse nearby candidates
 that fit their preferences, swipe, get matched on a mutual like, and chat over WebSocket or REST.
+A small browser UI for manual testing is served at <http://localhost:8080/>.
 
 - **Stack:** Java 17+, Spring Boot 4.1.2 (Web MVC, WebSocket, Data JPA / Hibernate 7, Security,
   OAuth2 Resource Server for JWT, Validation), Flyway, H2 (dev), Jackson 3
 - **Auth:** stateless JWT (HS256) bearer tokens, BCrypt password hashing
 - **Real time:** raw WebSocket endpoint at `/ws/chat`, with pushes sent after the database commit
+- **UI:** dependency-free HTML/CSS/JavaScript in `src/main/resources/static` (no build step)
 
 ---
 
 ## Table of contents
 
 1. [Running the app](#running-the-app)
-2. [Configuration](#configuration)
-3. [Quick start with curl](#quick-start-with-curl)
-4. [API reference](#api-reference)
-5. [WebSocket protocol](#websocket-protocol)
-6. [How it works](#how-it-works)
-7. [Database schema](#database-schema)
-8. [Project structure](#project-structure)
-9. [Testing](#testing)
-10. [Known limitations](#known-limitations)
+2. [Browser test UI](#browser-test-ui)
+3. [Configuration](#configuration)
+4. [Quick start with curl](#quick-start-with-curl)
+5. [API reference](#api-reference)
+6. [WebSocket protocol](#websocket-protocol)
+7. [How it works](#how-it-works)
+8. [Database schema](#database-schema)
+9. [Project structure](#project-structure)
+10. [Testing](#testing)
+11. [Known limitations](#known-limitations)
 
 ---
 
@@ -41,10 +44,30 @@ and enables the H2 console. Nothing else needs to be installed.
 mvn spring-boot:run
 ```
 
-The app starts on <http://localhost:8080>. On startup, Flyway creates the schema from
-`src/main/resources/db/migration`, and Hibernate checks that the entities match it.
+The app starts on <http://localhost:8080> once the log shows `Started DatingAppApplication`. On
+startup, Flyway creates the schema from `src/main/resources/db/migration`, and Hibernate checks
+that the entities match it.
 
-Data lives in memory and is lost when the app stops.
+Data lives in memory and is lost when the app stops, so every start begins with no users.
+
+`spring-boot:run` serves static files from `target/classes`, so after editing anything in
+`src/main/resources/static`, restart the app (or copy the changed files into
+`target/classes/static/`) and hard-refresh the browser (Cmd+Shift+R / Ctrl+Shift+R).
+
+### Stop the app
+
+- Started in a terminal with `mvn spring-boot:run` or `java -jar`: press **Ctrl+C** in that
+  terminal.
+- Running in the background (no terminal to press Ctrl+C in): kill whatever is listening on port
+  8080, then confirm the port is free (no output means it stopped):
+
+  ```bash
+  lsof -ti:8080 | xargs kill
+  lsof -i:8080
+  ```
+
+If startup fails with "Port 8080 was already in use", an earlier instance is still running; stop it
+as above.
 
 ### Build and run the jar
 
@@ -96,6 +119,69 @@ Before the first production deployment, add your database's JDBC driver and Flyw
 ```
 
 The migration SQL works on H2 and PostgreSQL. On MySQL, change the identity column definitions.
+
+---
+
+## Browser test UI
+
+Open <http://localhost:8080/> after starting the app. The page is plain HTML/CSS/JavaScript
+(`index.html`, `app.css`, `app.js` in `src/main/resources/static`) and talks to the same REST and
+WebSocket API documented below. Apart from these files, every route needs a token, which is why
+the root URL returned 401 before the UI existed.
+
+### Screens
+
+| Screen | What you can do |
+|---|---|
+| **Log in / Create account** | Register (with field validation messages from the API) or log in. "📍 Use my location" fills in latitude/longitude from the browser. |
+| **Discover** | One candidate card at a time (photo or initial, age, distance, bio, interests) with **Pass** and **Like**. A mutual like shows an "It's a match!" notification. |
+| **Matches** | Your active matches with unread counts, and a chat pane: live messages, "Load older messages" (cursor paging), automatic read receipts and **Unmatch**. |
+| **Profile** | Edit name, bio, picture URL (https only), interests, location and discovery preferences; **Delete my account**. |
+
+The green dot in the top bar means the real-time WebSocket is connected. If it drops, the UI sends
+messages over REST instead and reconnects every 3 seconds.
+
+### Testing two users at once
+
+Each browser tab keeps its own login (the token is stored in `sessionStorage`), so one browser is
+enough:
+
+1. Tab 1: register (or log in as) user A. Tab 2: register user B close by (e.g. both near
+   `40.71, -74.00`), with matching gender preferences.
+2. A likes B in **Discover**, then B likes A. Both tabs show the match notification.
+3. Open **Matches** in both tabs and chat; messages appear instantly on the other side.
+
+Restarting the app wipes all users (in-memory H2), so register again after each restart. To seed
+users quickly from a terminal, use the curl commands in [Quick start with curl](#quick-start-with-curl).
+
+### "Use my location" doesn't work
+
+The button uses the browser Geolocation API. `localhost` counts as a secure origin, and the server
+sends no header that restricts geolocation, so failures come from browser or OS permissions. The UI
+shows which case occurred:
+
+| Message | Fix |
+|---|---|
+| Location permission was denied | Click the icon left of the address bar → Site settings → Location → **Allow**, then reload. Browsers remember a previous "Block" and won't ask again. |
+| Your position is unavailable | macOS: System Settings → Privacy & Security → **Location Services** → turn it on and enable your browser. Keep Wi-Fi on; Macs locate themselves via nearby Wi-Fi networks. |
+| Finding your location timed out | Try again (15 s timeout), or type the coordinates manually. |
+
+You can always enter latitude/longitude by hand. Discovery only shows users within both people's
+`maxDistanceKm` (default 50 km, maximum 500 km), so test users must be near each other.
+
+### How the UI is wired
+
+- **Same origin:** the UI is served by the app itself, so REST calls need no CORS configuration,
+  and the WebSocket handshake passes the origin check (Spring always accepts same-origin
+  handshakes; `app.websocket.allowed-origins` only matters for UIs hosted elsewhere).
+- **Public files only:** `SecurityConfig` permits anonymous `GET` on `/`, `/index.html`, `/app.js`
+  and `/app.css`. Everything else, including every `/api/**` call the UI makes, still requires a
+  bearer token.
+- **XSS-safe rendering:** all user-supplied text (names, bios, messages) is inserted with
+  `textContent`, never `innerHTML`.
+- **Session handling:** a 401 from the API (expired token, deleted account) returns you to the
+  login screen. Logging out clears the token, closes the WebSocket and clears on-screen data.
+- **Notifications** appear top-right, at most three at a time, and never block clicks.
 
 ---
 
@@ -356,6 +442,9 @@ Client <──WS── WebSocketSessionRegistry <── RealtimeNotificationList
 - `MatchService.requireParticipant` guards every match and message operation. A non-participant
   gets the **same 404 as a missing match**, so match ids can't be discovered by probing.
 - There is no endpoint that lists all users.
+- The only unauthenticated routes are `POST /api/auth/register`, `POST /api/auth/login`, the
+  WebSocket handshake (authenticated by `JwtHandshakeInterceptor` instead), `/error`, the four
+  static UI files, and `/h2-console/**` in the dev profile.
 
 ### Potential matches (discovery)
 
@@ -505,7 +594,8 @@ src/main/java/com/datingapp/
                    RealtimeNotificationListener, WebSocketPayloads
 src/main/resources/
 ├── application.properties, application-dev.properties, application-prod.properties
-└── db/migration/V1__init_schema.sql
+├── db/migration/V1__init_schema.sql
+└── static/        Browser test UI: index.html, app.css, app.js
 ```
 
 ---
@@ -532,6 +622,12 @@ means real security, real SQL, Flyway and schema validation all run.
 All tests share one database, so each test uses unique emails and, where location matters, its
 own geographic area (`ApiTestSupport.uniqueLocation()`).
 
+The browser UI has no automated tests in the repository. To check it by hand, follow
+[Testing two users at once](#testing-two-users-at-once). The flows worth covering are: register
+(including a validation error), discover, mutual like → match notification in both tabs, live chat
+in both directions, history after a page reload, profile edit, unmatch (further messages are
+rejected), logout/login, and account deletion.
+
 ---
 
 ## Known limitations
@@ -549,4 +645,9 @@ own geographic area (`ApiTestSupport.uniqueLocation()`).
   hundred km of the 180° line may not see candidates on the other side.
 - **No rate limiting** on login or registration.
 - **Partial updates can't clear fields:** `null` means "unchanged", so there's no way to reset
-  `bio` or `preferredGender` back to empty or "no preference".
+  `bio` or `preferredGender` back to empty or "no preference". (An empty string does clear `bio`,
+  and the UI's profile form sends one when you empty the field.) In the UI, choosing
+  "(unchanged)" for "Interested in" or leaving the picture URL empty keeps the current value.
+- **Test UI, not a product UI:** it is meant for local manual testing. It has no image upload
+  (only https picture URLs), no offline support, and unread counts only track messages received
+  while the page is open.

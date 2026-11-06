@@ -53,6 +53,9 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login").permitAll()
+                        // Static test UI (src/main/resources/static). It holds no data; every API call it
+                        // makes still needs a bearer token.
+                        .requestMatchers(HttpMethod.GET, "/", "/index.html", "/app.js", "/app.css").permitAll()
                         // The WebSocket handshake is authenticated by JwtHandshakeInterceptor.
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/error").permitAll()
