@@ -5,7 +5,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 /** Verifies the context starts, including Flyway migration and Hibernate schema validation. */
 @SpringBootTest
-class DatingAppApplicationTests {
+class BumbleBeeApplicationTests {
 
     @Test
     void contextLoads() {

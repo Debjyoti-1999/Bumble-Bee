@@ -4,9 +4,9 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class DatingAppApplication {
+public class BumbleBeeApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(DatingAppApplication.class, args);
+        SpringApplication.run(BumbleBeeApplication.class, args);
     }
 }

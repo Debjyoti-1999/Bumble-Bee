@@ -1,7 +1,7 @@
 'use strict';
 
 /*
- * Minimal vanilla-JS client for the DatingApp API.
+ * Minimal vanilla-JS client for the Bumble-bee API.
  * - Token is kept in sessionStorage, so every browser tab can be logged in as a different user.
  * - All user-supplied text is rendered with textContent (never innerHTML) to avoid XSS.
  */

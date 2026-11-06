@@ -12,9 +12,9 @@
     </parent>
 
     <groupId>com.datingapp</groupId>
-    <artifactId>dating-app</artifactId>
+    <artifactId>bumble-bee</artifactId>
     <version>1.0-SNAPSHOT</version>
-    <name>DatingApp</name>
+    <name>Bumble-bee</name>
     <description>Near real-time dating application with WebSocket chat</description>
 
     <properties>

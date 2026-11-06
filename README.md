@@ -1,4 +1,4 @@
-# DatingApp
+# Bumble-bee
 
 A near real-time dating backend built with Spring Boot 4. Users register, browse nearby candidates
 that fit their preferences, swipe, get matched on a mutual like, and chat over WebSocket or REST.
@@ -44,7 +44,7 @@ and enables the H2 console. Nothing else needs to be installed.
 mvn spring-boot:run
 ```
 
-The app starts on <http://localhost:8080> once the log shows `Started DatingAppApplication`. On
+The app starts on <http://localhost:8080> once the log shows `Started BumbleBeeApplication`. On
 startup, Flyway creates the schema from `src/main/resources/db/migration`, and Hibernate checks
 that the entities match it.
 
@@ -72,8 +72,8 @@ as above.
 ### Build and run the jar
 
 ```bash
-mvn clean package          # compiles, runs all tests, builds target/dating-app-1.0-SNAPSHOT.jar
-java -jar target/dating-app-1.0-SNAPSHOT.jar
+mvn clean package          # compiles, runs all tests, builds target/bumble-bee-1.0-SNAPSHOT.jar
+java -jar target/bumble-bee-1.0-SNAPSHOT.jar
 ```
 
 Add `-DskipTests` to `mvn package` to skip tests.
@@ -579,7 +579,7 @@ Timestamps are `TIMESTAMP WITH TIME ZONE`, mapped to `java.time.Instant`. The re
 
 ```
 src/main/java/com/datingapp/
-├── DatingAppApplication.java
+├── BumbleBeeApplication.java
 ├── config/        SecurityConfig (filter chains, JWT encoder/decoder, BCrypt), WebSocketConfig,
 │                  JwtProperties, WebSocketProperties
 ├── security/      JwtService, JwtHandshakeInterceptor, @CurrentUserId
@@ -617,7 +617,7 @@ means real security, real SQL, Flyway and schema validation all run.
 | `SwipeAndChatApiTest` | Mutual like → match, dislike, 400/404/409 swipe errors, non-participant 404s, cursor-paged history, read receipts, unmatch blocks messaging |
 | `ConcurrentSwipeTest` | 20 rounds of simultaneous mutual likes → exactly one match each time |
 | `ChatWebSocketIntegrationTest` | Handshake authentication (no token, bad token, legacy `?userId=`), `MATCH` push to both users, WebSocket chat delivery and echo, REST message push, `ERROR` frames that keep the connection open |
-| `DatingAppApplicationTests` | Context loads (migrations and schema validation) |
+| `BumbleBeeApplicationTests` | Context loads (migrations and schema validation) |
 
 All tests share one database, so each test uses unique emails and, where location matters, its
 own geographic area (`ApiTestSupport.uniqueLocation()`).
